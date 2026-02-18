@@ -1,6 +1,65 @@
+import json
+import time
+from datetime import datetime
+from pathlib import Path
+
 import numpy as np
+
+# 如果predict在algo.py里
 from algo import predict
 
-X = np.random.randn(10, 5)
-result = predict(X, meta={}, config={})
-print(result)
+
+def make_run_id() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def save_json(obj, path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2, default=str)
+
+
+def main():
+    # 1) 配置（先写死，后面再做命令行参数）
+    config = {
+        "algo":"dummy_mean",
+        "seed":42,
+        "n_samples":10,
+        "n_features":5,
+    }
+
+    # 2) 生成run_id与输出目录
+    run_id = make_run_id()
+    out_dir = Path("results") / run_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # 3) 准备输入（MVP：随机特征，后面替换为data_mgmt.load_feature）
+    np.random.seed(config["seed"])
+    X = np.random.randn(config["n_samples"], config["n_features"])
+    meta = {"source": "random_demo"}
+
+    # 4) 调算法并计时
+    t0 = time.time()
+    result = predict(X, meta=meta, config=config)
+    duration = time.time() - t0
+
+    # 5) 补充运行信息（如果algo里已经有run_info，就合并）
+    result.setdefault("run_info", {})
+    result["run_info"].update({
+        "run_id": run_id,
+        "duration_sec": round(duration, 6),
+        "timestamp": datetime.now().isoformat(),
+    })
+
+    # 6) 落盘
+    save_json(config, out_dir / "config.json")
+    save_json(result, out_dir / "result.json")
+
+    # 7) 控制台输出关键信息
+    print(f"[OK] run_id={run_id}")
+    print(f"[OK] saved to: {out_dir}")
+    print(f"[OK] keys: {list(result.keys())}")
+
+
+if __name__ == "__main__":
+    main()
