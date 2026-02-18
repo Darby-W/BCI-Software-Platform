@@ -1,1 +1,13 @@
+# data_mgmt.py
 
+def import_data(path):
+    # EDF，CSV都行,随便文件路径
+    data = load_csv(path)
+    return data_id
+
+def save_feature(data_id, X, y, meta):
+    # 把特征存成一个npz文件
+    return feature_id
+
+def load_feature(feature_id):
+    return X, y, meta
