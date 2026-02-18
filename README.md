@@ -12,7 +12,6 @@ This project is developed as a research-oriented platform with a clear separatio
 ---
 
 1.Clone the Repository
-```bash
 git clone https://github.com/Darby-W/BCI-Software-Platform.git
 cd BCI-Software-Platform
 
