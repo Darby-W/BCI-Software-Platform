@@ -1,1 +1,8 @@
+# pipeline.py
 
+data_id = import_data("demo.csv")
+feature_id = save_feature(data_id, X, y, meta)
+X, y, meta = load_feature(feature_id)
+result = predict(X, meta, config)
+
+print(result)
