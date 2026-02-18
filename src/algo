@@ -1,1 +1,55 @@
+# algo.py
 
+#预测
+import numpy as np
+
+def predict(X, meta=None, config=None):
+    # 一个最简单的“假算法”
+    # 比如：每个样本取平均值当预测值
+    pred = np.mean(X, axis=1)
+
+    run_info = {
+        "model": "mean_model",
+        "params": config
+    }
+
+    return {
+        "pred": pred,
+        "run_info": run_info
+    }
+
+#训练
+# def train(X, y, meta, config):
+#     run_id = config.get("run_id")
+#     params = config.get("params", {})
+#     mode = config.get("mode", "training")
+#     notes = config.get("notes", "")
+#     model_type = config.get("model_type", "default")
+#
+#     # 根据配置初始化模型
+#     model = init_model(model_type=model_type, **params)
+#
+#     # 执行训练（带异常捕获）
+#     try:
+#         model = model.fit(X, y)  # 统一用 model 变量
+#     except Exception as e:
+#         raise RuntimeError(f"Training failed for run_id {run_id}: {str(e)}")
+#
+#     # 获取训练指标（注意：这是训练集得分）
+#     training_metrics = {
+#         "train_score": model.score(X, y) if hasattr(model, 'score') else None,
+#         "train_samples": len(X)
+#     }
+#
+#     # 封装运行信息
+#     run_info = {
+#         "params": params,
+#         "run_id": run_id,
+#         "mode": mode,
+#         "notes": notes,
+#         "model": model,
+#         "meta": meta,  # 假设 meta 已经控制过大小
+#         "metrics": training_metrics,
+#         "model_type": model_type
+#     }
+#     return run_info
