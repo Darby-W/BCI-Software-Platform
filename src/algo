@@ -4,17 +4,17 @@
 import numpy as np
 
 def predict(X, meta=None, config=None):
-    # 一个最简单的“假算法”
-    # 比如：每个样本取平均值当预测值
+    # 最简单：每行取均值当预测
     pred = np.mean(X, axis=1)
 
     run_info = {
         "model": "mean_model",
-        "params": config
+        "params": config or {},
+        "meta": meta or {}
     }
 
     return {
-        "pred": pred,
+        "pred": pred.tolist(),   # 转成list，方便json保存
         "run_info": run_info
     }
 
