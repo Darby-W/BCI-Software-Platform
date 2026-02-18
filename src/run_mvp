@@ -1,0 +1,6 @@
+import numpy as np
+from algo import predict
+
+X = np.random.randn(10, 5)
+result = predict(X, meta={}, config={})
+print(result)
