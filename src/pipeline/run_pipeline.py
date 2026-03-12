@@ -5,6 +5,7 @@ from src import AlgorithmRegistry
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score
+from src.preprocessing.band_pass_filter import BandpassFilter
 
 
 def run_pipeline(algo_name="svm"):
@@ -15,7 +16,7 @@ def run_pipeline(algo_name="svm"):
     print("========== BCI Pipeline Start ==========")
 
     # 1 初始化数据系统
-    bci = BCIDataSystem(data_dir="./third_party_device_data")
+    bci = BCIDataSystem(data_dir="D:\\pycharm\\code\\BCI-Software-Platform\\third_party_device_data")
 
     # 2 查询数据
     data_ids = bci.query_data()
@@ -35,7 +36,21 @@ def run_pipeline(algo_name="svm"):
     print("数据形状:", X.shape)
     print("标签形状:", y.shape)
 
-    # 4 划分训练测试
+    #4带通滤波预处理
+    try:
+        #先从mete读取采样率，如果没有则默认使用250，这样可以适配不同bci设备
+        fs = meta.get("sampling_rate",250)
+        bandpass = BandpassFilter(
+            lowcut=8,
+            highcut=30,
+            fs=fs
+        )
+        X = bandpass.apply(X)#执行滤波并替换原始X
+        print(f"完成带通滤波（采样率{fs}Hz，8-30Hz）|滤波后数据形状为: {X.shape}")
+    except Exception as e:
+        raise RuntimeError(f"未能成功执行带通滤波：{str(e)}")
+
+    # 5划分训练测试
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
@@ -46,7 +61,7 @@ def run_pipeline(algo_name="svm"):
     print("训练集:", X_train.shape)
     print("测试集:", X_test.shape)
 
-    # 5 获取算法
+    # 获取算法
     AlgoClass = AlgorithmRegistry.get(algo_name)
 
     model = AlgoClass()
@@ -75,3 +90,8 @@ def run_pipeline(algo_name="svm"):
     print("========== Pipeline End ==========")
 
     return metrics
+
+#主程序入口
+if __name__ == "__main__":
+    # 测试运行（可切换算法：svm/logistic_reg）
+    run_pipeline(algo_name="svm")
