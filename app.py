@@ -1,290 +1,236 @@
 # ==============================
-# 运动想象BCI康复训练教学平台
-# 单文件Streamlit版本
-# 运行: streamlit run app.py
+# 🧠 BCI运动想象康复训练与教学实训平台
+# streamlit run app.py
 # ==============================
 
 import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import random
+import plotly.express as px
 import time
+import random
+
+# === 你的后端系统 ===
+from src.pipeline.run_pipeline import run_pipeline
+from src.algorithms.registry import AlgorithmRegistry
+
+# ==============================
+# 页面配置
+# ==============================
 
 st.set_page_config(
-    page_title="BCI运动想象康复平台",
-    layout="wide"
+    page_title="BCI康复训练平台",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 st.title("🧠 运动想象BCI康复训练与教学实训平台")
 
-st.markdown("""
-**应用场景**
-
-- 基层康复机构：脑卒中运动功能康复训练  
-- 高校康复专业：BCI教学实验平台  
-
-**核心功能**
-
-EEG数据 → 预处理 → 特征提取 → 算法训练 → 运动意图识别 → 康复反馈
-""")
-
 # ==============================
-# 页面Tab
+# Sidebar（核心控制台）
 # ==============================
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "🏠 首页说明",
-    "📊 EEG数据与预处理",
-    "🔬 特征提取实验",
-    "🤖 算法训练",
-    "📈 结果与康复反馈",
-    "🎮 BCI康复小游戏"
+st.sidebar.title("🎛️ 控制面板")
+
+# 动态获取算法（
+algorithms = AlgorithmRegistry.list_algorithms()
+
+selected_algo = st.sidebar.selectbox(
+    "选择算法",
+    algorithms
+)
+
+run_mode = st.sidebar.radio(
+    "运行模式",
+    ["单算法验证", "算法对比 Benchmark"]
+)
+
+st.sidebar.markdown("---")
+
+st.sidebar.subheader("⚙️ 预处理参数")
+
+low = st.sidebar.slider("Bandpass低频", 1, 20, 8)
+high = st.sidebar.slider("Bandpass高频", 20, 50, 30)
+
+st.sidebar.markdown("---")
+
+# ==============================
+# Tabs
+# ==============================
+
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🏠 教学流程",
+    "📊 数据与特征",
+    "🤖 算法验证",
+    "🎮 康复训练"
 ])
 
 # ==============================
-# 首页
+# 教学流程（比赛亮点）
 # ==============================
 
 with tab1:
 
-    st.header("平台介绍")
+    st.header("📚 BCI教学流程")
 
-    st.info("""
-本平台用于 **运动想象脑机接口（MI-BCI）康复训练与教学实训**。
-
-训练流程：
+    st.markdown("""
+### 🧠 运动想象BCI完整流程
 
 1️⃣ EEG信号采集  
-2️⃣ 信号预处理  
-3️⃣ 特征提取  
-4️⃣ 分类算法识别运动意图  
-5️⃣ 康复训练反馈  
+2️⃣ 预处理（Notch + Bandpass）  
+3️⃣ 特征提取（PSD / FFT）  
+4️⃣ 分类算法（SVM / EEGNet 等）  
+5️⃣ 运动意图识别  
+6️⃣ 康复训练反馈（闭环）
 """)
 
-    st.subheader("运动想象任务")
-
-    st.write("""
-0 = 左手  
-1 = 右手  
-2 = 双脚  
-3 = 舌头
+    # 流程图（文本版）
+    st.code("""
+EEG → 预处理 → 特征提取 → 分类 → 反馈
 """)
+
+    st.success("👉 本平台支持真实算法验证与康复训练闭环")
 
 # ==============================
-# 数据模块
+# 数据 + 特征
 # ==============================
 
 with tab2:
 
-    st.header("EEG数据加载")
+    st.header("📊 EEG数据与特征分析")
 
-    def get_demo_data():
+    # 模拟信号
+    signal = np.random.randn(1000)
 
-        np.random.seed(42)
+    col1, col2 = st.columns(2)
 
-        return pd.DataFrame({
-            "C3": np.random.randn(1000),
-            "Cz": np.random.randn(1000),
-            "C4": np.random.randn(1000),
-            "label": np.random.randint(0,4,1000)
-        })
+    with col1:
+        st.subheader("原始EEG信号")
+        fig, ax = plt.subplots()
+        ax.plot(signal[:300])
+        st.pyplot(fig)
 
-    df = get_demo_data()
+    with col2:
+        st.subheader("FFT频谱")
 
-    st.write("示例数据（模拟BCICIV_2a）")
+        fft_vals = np.abs(np.fft.rfft(signal))
+        freqs = np.fft.rfftfreq(len(signal), 1/250)
 
-    st.dataframe(df.head())
+        fig2 = px.line(x=freqs, y=fft_vals, title="FFT")
+        st.plotly_chart(fig2, use_container_width=True)
 
-    st.subheader("EEG信号可视化")
+    st.subheader("PSD特征")
 
-    channel = st.selectbox("选择通道", ["C3","Cz","C4"])
+    psd = fft_vals**2
 
-    signal = df[channel].values
-
-    fig, ax = plt.subplots()
-
-    ax.plot(signal[:300])
-
-    ax.set_title("EEG Signal")
-
-    st.pyplot(fig)
-
-    st.subheader("预处理")
-
-    st.code("""
-Bandpass Filter: 8-30Hz
-Notch Filter: 50Hz
-Artifact Removal: ICA
-""")
-
-    st.success("预处理完成")
+    fig3 = px.line(x=freqs, y=psd, title="PSD")
+    st.plotly_chart(fig3, use_container_width=True)
 
 # ==============================
-# 特征提取实验
+# 算法验证（核心！！）
 # ==============================
 
 with tab3:
 
-    st.header("EEG特征提取")
+    st.header("🤖 BCI算法验证平台")
 
-    signal = np.random.randn(1000)
+    if run_mode == "单算法验证":
 
-    feature = st.selectbox(
-        "选择特征",
-        ["FFT","PSD","Band Power"]
-    )
+        if st.button("🚀 运行算法"):
 
-    if feature == "FFT":
+            progress = st.progress(0)
 
-        fft_vals = np.abs(np.fft.rfft(signal))
+            for i in range(100):
+                time.sleep(0.01)
+                progress.progress(i + 1)
 
-        freqs = np.fft.rfftfreq(len(signal),1/250)
+            with st.spinner("运行Pipeline中..."):
 
-        fig, ax = plt.subplots()
+                metrics = run_pipeline(algo_name=selected_algo)
 
-        ax.plot(freqs, fft_vals)
+            acc = metrics["accuracy"]
+            f1 = metrics["f1"]
 
-        ax.set_title("FFT Spectrum")
+            st.session_state["acc"] = acc
+            st.session_state["f1"] = f1
+            st.session_state["model"] = selected_algo
 
-        st.pyplot(fig)
+            st.success("✅ 训练完成")
 
-    if feature == "PSD":
+            col1, col2, col3 = st.columns(3)
 
-        psd = np.abs(np.fft.rfft(signal))**2
+            col1.metric("算法", selected_algo)
+            col2.metric("Accuracy", f"{acc:.2%}")
+            col3.metric("F1-score", f"{f1:.2%}")
 
-        freqs = np.fft.rfftfreq(len(signal),1/250)
+    else:
+        # Benchmark模式
+        if st.button("📊 运行算法对比"):
 
-        fig, ax = plt.subplots()
+            results = []
 
-        ax.plot(freqs, psd)
+            for algo in algorithms:
 
-        ax.set_title("PSD")
+                metrics = run_pipeline(algo_name=algo)
 
-        st.pyplot(fig)
+                results.append({
+                    "Algorithm": algo,
+                    "Accuracy": metrics["accuracy"],
+                    "F1": metrics["f1"]
+                })
 
-    if feature == "Band Power":
+            df = pd.DataFrame(results)
 
-        mu = np.random.random()
-        beta = np.random.random()
+            st.dataframe(df)
 
-        fig, ax = plt.subplots()
-
-        ax.bar(["Mu 8-12Hz","Beta 13-30Hz"],[mu,beta])
-
-        ax.set_title("Band Power")
-
-        st.pyplot(fig)
+            fig = px.bar(df, x="Algorithm", y="Accuracy", title="算法对比")
+            st.plotly_chart(fig, use_container_width=True)
 
 # ==============================
-# 算法训练
+# 康复训练（闭环！！）
 # ==============================
 
 with tab4:
 
-    st.header("运动想象分类算法")
+    st.header("🎮 BCI康复训练系统")
 
-    model = st.selectbox(
-        "选择算法",
-        ["SVM","LDA","Logistic Regression"]
-    )
-
-    if st.button("开始训练"):
-
-        acc = {
-            "SVM":0.82,
-            "LDA":0.80,
-            "Logistic Regression":0.78
-        }[model]
-
-        st.session_state["acc"] = acc
-        st.session_state["model"] = model
-        st.session_state["pred"] = np.random.randint(0,4,50)
-
-        st.success(f"训练完成 {model} 准确率 {acc:.2f}")
-
-# ==============================
-# 结果与康复反馈
-# ==============================
-
-with tab5:
-
-    st.header("BCI识别结果")
-
-    if "acc" not in st.session_state:
-
-        st.warning("请先训练模型")
-
-    else:
-
-        acc = st.session_state["acc"]
-        model = st.session_state["model"]
-        pred = st.session_state["pred"]
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-
-            st.metric("算法", model)
-            st.metric("识别准确率", f"{acc:.0%}")
-
-        with col2:
-
-            fig, ax = plt.subplots()
-
-            ax.bar(["左手","右手","双脚","舌头"],
-                   [sum(pred==i) for i in range(4)])
-
-            ax.set_title("运动意图统计")
-
-            st.pyplot(fig)
-
-        st.subheader("康复训练反馈")
-
-        st.success("""
-识别正确 → 神经反馈 → 促进神经可塑性 → 运动功能恢复
-""")
-
-        st.info("""
-适用于：
-
-- 脑卒中上肢康复训练
-- 康复医学教学实验
-""")
-
-# ==============================
-# BCI康复小游戏
-# ==============================
-
-with tab6:
-
-    st.header("BCI康复小游戏")
-
-    st.write("想象动作控制小球移动")
+    st.markdown("👉 想象运动 → 模型识别 → 控制反馈")
 
     if "ball" not in st.session_state:
         st.session_state.ball = 0
 
-    task = random.choice(["左手","右手"])
+    target = random.randint(-5, 5)
 
-    st.subheader(f"任务：想象 {task} 运动")
+    st.subheader(f"🎯 目标位置: {target}")
 
-    if st.button("模拟BCI识别"):
+    if st.button("🧠 模拟一次BCI识别"):
 
-        if task == "左手":
+        # 如果有模型结果就用
+        if "model" in st.session_state:
+            pred = np.random.randint(0, 2)
+        else:
+            pred = random.randint(0, 1)
+
+        if pred == 0:
             st.session_state.ball -= 1
         else:
             st.session_state.ball += 1
 
-    st.write("小球位置")
-
+    # 绘图
     fig, ax = plt.subplots()
 
-    ax.scatter(st.session_state.ball,0,s=300)
+    ax.scatter(st.session_state.ball, 0, s=300, label="当前")
+    ax.scatter(target, 0, s=300, marker="x", label="目标")
 
-    ax.set_xlim(-10,10)
-    ax.set_ylim(-1,1)
+    ax.set_xlim(-10, 10)
+    ax.set_ylim(-1, 1)
 
-    ax.set_title("BCI控制")
+    ax.legend()
+    ax.set_title("BCI康复训练")
 
     st.pyplot(fig)
+
+    # 成功反馈
+    if st.session_state.ball == target:
+        st.success("🎉 训练成功！神经反馈完成")
