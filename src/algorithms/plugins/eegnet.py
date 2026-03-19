@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 )
-from braindecode.models import EEGNetv4
+from braindecode.models import EEGNet
 from ..base import BaseAlgorithm
 from ..__init__ import register_algorithm
 
@@ -22,7 +22,8 @@ class EEGNetAlgorithm(BaseAlgorithm):
         self.tolerance = self.params.get('tolerance', 1e-6)
         self.n_channels = self.params.get('n_channels', 22)  # BCICIV_2a默认22通道
         self.n_classes = self.params.get('n_classes', 4)  # BCICIV_2a是4分类（左/右/脚/舌）
-        self.input_window_samples = self.params.get('input_window_samples', 1000)  # 100Hz*10s
+        # 250Hz × 4s = 1000
+        self.input_window_samples = self.params.get('input_window_samples', 1000)
 
         # 模型相关
         self.model = None
@@ -53,17 +54,17 @@ class EEGNetAlgorithm(BaseAlgorithm):
         return self
 
     def _prepare_data(self, X: np.ndarray, y: Optional[np.ndarray] = None):
-        """将numpy格式的EEG数据转换为模型输入的tensor格式"""
-        # X形状要求：(n_samples, n_channels, n_timesteps)
+
+        # 保持 (N, C, T) 不动
         if len(X.shape) == 2:
-            # 如果输入是(n_samples, n_features)，reshape为(n_samples, n_channels, n_timesteps)
             X = X.reshape(-1, self.n_channels, self.input_window_samples)
 
-        # 转换为torch tensor并移到设备上
         X_tensor = torch.from_numpy(X).float().to(self.device)
+
         y_tensor = None
         if y is not None:
             y_tensor = torch.from_numpy(y).long().to(self.device)
+
         return X_tensor, y_tensor
 
     def train(self, X: np.ndarray, y: np.ndarray) -> None:
@@ -72,11 +73,10 @@ class EEGNetAlgorithm(BaseAlgorithm):
         X_tensor, y_tensor = self._prepare_data(X, y)
 
         # 2. 初始化EEGNet模型
-        self.model = EEGNetv4(
-            n_channels=self.n_channels,
-            n_classes=self.n_classes,
-            input_window_samples=self.input_window_samples,
-            final_conv_length="auto",
+        self.model = EEGNet(
+            n_chans=self.n_channels,  # ✅ 改名
+            n_outputs=self.n_classes,  # ✅ 改名
+            n_times=self.input_window_samples,  # ✅ 保留
         ).to(self.device)
 
         # 3. 优化器和损失函数（多分类）

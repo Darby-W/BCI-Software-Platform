@@ -1,0 +1,1 @@
+from .split_eeg_into_trials import split_eeg_into_trials

@@ -29,6 +29,6 @@ class BandpassFilter:
         """
         b, a = self._design_filter()
 
-        filtered = filtfilt(b, a, data, axis=0)
+        filtered = filtfilt(b, a, data, axis=1)
 
         return filtered

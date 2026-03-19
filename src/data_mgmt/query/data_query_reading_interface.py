@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Tuple, Dict, List
 
 # ===================== 基础配置 =====================
-DEFAULT_DATA_DIR = "./third_party_device_data"
+DEFAULT_DATA_DIR = "D:\pycharm\code\BCI-Software-Platform\src\data_mgmt\data_tools\\third_party_device_data"
 SUPPORT_FORMATS = ["EDF", "CSV"]
 DEFAULT_SAMPLE_RATE = 250
 EVENT_MAP = {"left_hand": 1, "right_hand": 2, "rest": 0, "eye_blink": 3}
@@ -44,8 +44,8 @@ class BCIDataSystem:
         else:
             self.data_dir = data_dir
 
-        if not validate_path(self.data_dir):
-            raise PermissionError(f"目录 {self.data_dir} 无读写权限！请更换目录")
+       # if not validate_path(self.data_dir):
+       #    raise PermissionError(f"目录 {self.data_dir} 无读写权限！请更换目录")
         init_data_dir(self.data_dir)
         self.data_map = self._auto_scan_data()
         if not self.data_map:
@@ -139,7 +139,21 @@ class BCIDataSystem:
             channel_cols = [col for col in df.columns if any(key in col.lower() for key in ["eeg", "ch","f"])]
             if not channel_cols:
                 raise ValueError("未找到EEG通道列（列名建议包含EEG/Ch）")
-            X = df[channel_cols].values
+            # ===== 判断是否是 trial 展平格式 =====
+            if any("_t" in col for col in channel_cols):
+                print("检测到 trial 展平格式CSV，自动还原3D结构")
+
+                num_trials = df.shape[0]
+                num_channels = 22
+                num_timepoints = 1000
+
+                X_flat = df[channel_cols].values
+
+                X = X_flat.reshape(num_trials, num_channels, num_timepoints)
+
+            else:
+                # 原始时间序列格式（备用）
+                X = df[channel_cols].values
             y = np.zeros(X.shape[0], dtype=int)
             label_col = next((col for col in LABEL_COLUMNS if col in df.columns), None)
             if label_col:
