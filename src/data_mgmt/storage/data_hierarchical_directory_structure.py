@@ -2,12 +2,16 @@ import os
 import json
 import uuid
 from datetime import datetime
+from pathlib import Path
+
 #实现数据分层目录结构
 # =========================
-# 定义数据目录
+# 定义数据目录（动态计算项目根目录）
 # =========================
 
-DATA_DIR = "data"
+_CURRENT_DIR = Path(__file__).resolve().parent  # .../src/data_mgmt/storage/
+_PROJECT_ROOT = _CURRENT_DIR.parents[2]  # 项目根目录
+DATA_DIR = str(_PROJECT_ROOT / "data")
 RAW_DIR = os.path.join(DATA_DIR, "raw")
 FEATURE_DIR = os.path.join(DATA_DIR, "feature")
 META_FILE = os.path.join(DATA_DIR, "meta.json")

@@ -6,9 +6,14 @@ import os
 import json
 from datetime import datetime
 from typing import Tuple, Dict, List
+from pathlib import Path
 
 # ===================== 基础配置 =====================
-DEFAULT_DATA_DIR = "D:\pycharm\code\BCI-Software-Platform\src\data_mgmt\data_tools\\third_party_device_data"
+# 动态获取默认数据目录（无需手动配置）
+_CURRENT_DIR = Path(__file__).resolve().parent  # .../src/data_mgmt/query/
+_PROJECT_ROOT = _CURRENT_DIR.parents[2]  # 项目根目录
+DEFAULT_DATA_DIR = str(_PROJECT_ROOT / "src" / "data_mgmt" / "data_tools" / "third_party_device_data")
+
 SUPPORT_FORMATS = ["EDF", "CSV"]
 DEFAULT_SAMPLE_RATE = 250
 EVENT_MAP = {"left_hand": 1, "right_hand": 2, "rest": 0, "eye_blink": 3}

@@ -1,4 +1,6 @@
 import argparse
+import os
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -9,14 +11,20 @@ def main():
     parser = argparse.ArgumentParser(description="算法插件化运行框架")
     parser.add_argument("--algo", required=True, help="要运行的算法名称")
     parser.add_argument("--data_id", required=True, help="数据ID(inquiry from BCIDataSystem")
-    parser.add_argument("--data_dir", default="./third_party_device_data", help="数据目录")
+    parser.add_argument("--data_dir", default=None, help="数据目录（优先于环境变量 BCI_DATA_DIR）")
     args = parser.parse_args()
+
+    project_root = Path(__file__).resolve().parent
+    configured_data_dir = args.data_dir or os.getenv("BCI_DATA_DIR") or "src/data_mgmt/data_tools/third_party_device_data"
+    resolved_data_dir = Path(configured_data_dir)
+    if not resolved_data_dir.is_absolute():
+        resolved_data_dir = project_root / resolved_data_dir
 
     # ====================== 自动发现所有算法 ======================
     AlgorithmRegistry.discover()
 
     # ====================== 初始化数据系统 ======================
-    bci = BCIDataSystem(data_dir=args.data_dir)
+    bci = BCIDataSystem(data_dir=str(resolved_data_dir))
 
     print("\n可用数据ID：", bci.query_data())
 
