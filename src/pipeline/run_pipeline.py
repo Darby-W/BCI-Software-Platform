@@ -53,6 +53,8 @@ def run_pipeline(algo_name="svm", data_dir=None):
         preprocessing = Preprocessing(fs)
 
         X = preprocessing.apply(X)
+        # 标准化（非常关键）
+        X = (X - np.mean(X, axis=-1, keepdims=True)) / (np.std(X, axis=-1, keepdims=True) + 1e-6)
 
         print(f"完成预处理（Notch + Bandpass） | 数据形状: {X.shape}")
 

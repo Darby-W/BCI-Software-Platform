@@ -105,8 +105,8 @@ def convert_gdf_to_csv(gdf_file_path: str, csv_save_path: str):
 
     # ===== trial 切分参数 =====
     fs = SAMPLING_RATE
-    t_start = 0      # 可以改成 0.5 或 2
-    t_end   = 4
+    t_start = 2      # 可以改成 0.5 或 2
+    t_end   = 6
 
     start_offset = int(t_start * fs)
     end_offset   = int(t_end * fs)
