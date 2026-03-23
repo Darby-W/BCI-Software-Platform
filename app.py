@@ -14,6 +14,7 @@ import random
 # === 你的后端系统 ===
 from src.pipeline.run_pipeline import run_pipeline
 from src.algorithms.registry import AlgorithmRegistry
+from src.data_mgmt.storage.data_hierarchical_directory_structure import get_all_experiments
 
 # ==============================
 # 页面配置
@@ -191,6 +192,28 @@ with tab3:
             st.dataframe(df)
 
             fig = px.bar(df, x="Algorithm", y="Accuracy", title="算法对比")
+            st.plotly_chart(fig, width="stretch")
+
+    st.markdown("### 📜 实验日志记录")
+
+    if st.button("查看实验历史"):
+
+        exps = get_all_experiments()
+
+        if not exps:
+            st.info("暂无实验记录")
+        else:
+            df = pd.DataFrame(exps)
+
+            st.dataframe(df)
+
+            fig = px.bar(
+                df,
+                x="exp_id",
+                y="status",
+                title="实验记录概览"
+            )
+
             st.plotly_chart(fig, width="stretch")
 
 # ==============================
