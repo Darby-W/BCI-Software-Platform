@@ -17,7 +17,7 @@ from datetime import datetime
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 
-# === 你的后端系统 ===
+# === 后端系统 ===
 from src.pipeline.run_pipeline import run_pipeline
 from src.algorithms.registry import AlgorithmRegistry
 from src.data_mgmt.storage.data_hierarchical_directory_structure import get_all_experiments
