@@ -1,0 +1,286 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[UTF8]{ctex}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+
+% 页面设置
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+
+% 页眉页脚
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{BCI实验报告}
+\fancyhead[R]{\today}
+\fancyfoot[C]{\thepage}
+
+% 标题格式
+\usepackage{titlesec}
+\titleformat{\section}{\Large\bfseries\color{blue!60!black}}{}{0em}{}
+\titleformat{\subsection}{\large\bfseries\color{blue!40!black}}{}{0em}{}
+
+% 代码环境
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10},
+    language=Python
+}
+
+\begin{document}
+
+% 标题页
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    
+    {\Huge\bfseries {{ experiment_name }}\par}
+    \vspace{1cm}
+    {\Large BCI运动想象实验报告\par}
+    \vspace{2cm}
+    
+    \begin{tabular}{rl}
+        实验ID: & {{ experiment_id }} \\
+        研究者: & {{ researcher }} \\
+        机构: & {{ institution }} \\
+        实验日期: & {{ experiment_date }} \\
+        报告生成时间: & {{ generation_time }} \\
+    \end{tabular}
+    
+    \vfill
+    {\large BCI运动想象康复训练平台}
+\end{titlepage}
+
+% 目录
+\tableofcontents
+\newpage
+
+% 正文开始
+\section{实验基本信息}
+
+\subsection{实验概述}
+\textbf{实验描述}: {{ description }}
+
+\subsection{被试信息}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{ll}
+        \toprule
+        项目 & 内容 \\
+        \midrule
+        被试编号 & {{ subject_id }} \\
+        年龄 & {{ age }}岁 \\
+        性别 & {{ gender }} \\
+        利手 & {{ handedness }} \\
+        经验水平 & {{ experience_level }} \\
+        纳入标准 & {{ inclusion_criteria }} \\
+        \bottomrule
+    \end{tabular}
+    \caption{被试信息}
+\end{table}
+
+\section{数据采集与预处理}
+
+\subsection{数据采集参数}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{ll}
+        \toprule
+        参数 & 值 \\
+        \midrule
+        设备型号 & {{ device_name }} \\
+        通道数 & {{ channel_count }} \\
+        采样率 & {{ sampling_rate }} Hz \\
+        参考电极 & {{ reference }} \\
+        接地电极 & {{ ground }} \\
+        阻抗阈值 & {{ impedance_threshold }} k$\Omega$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{数据采集参数}
+\end{table}
+
+\subsection{预处理参数}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{ll}
+        \toprule
+        参数 & 值 \\
+        \midrule
+        带通滤波 & {{ bandpass_low }}-{{ bandpass_high }} Hz \\
+        陷波滤波 & {{ notch_frequency }} Hz \\
+        伪迹去除方法 & {{ artifact_removal_method }} \\
+        眼电通道 & {{ eog_channels }} \\
+        坏道剔除 & {{ bad_channels }} \\
+        \bottomrule
+    \end{tabular}
+    \caption{预处理参数}
+\end{table}
+
+\section{特征提取与分类}
+
+\subsection{特征提取参数}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{ll}
+        \toprule
+        参数 & 值 \\
+        \midrule
+        提取方法 & {{ feature_method }} \\
+        时间窗口 & {{ time_window[0] }}-{{ time_window[1] }}秒 \\
+        频带 & {{ frequency_bands }} \\
+        成分数量 & {{ n_components }} \\
+        \bottomrule
+    \end{tabular}
+    \caption{特征提取参数}
+\end{table}
+
+\subsection{分类结果}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lcc}
+        \toprule
+        指标 & 值 & 标准差 \\
+        \midrule
+        准确率 & {{ "%.1f"|format(accuracy*100) }}\% & $\pm${{ "%.1f"|format(accuracy_std*100) }}\% \\
+        F1-Score & {{ "%.1f"|format(f1_score*100) }}\% & $\pm${{ "%.1f"|format(f1_std*100) }}\% \\
+        Kappa系数 & {{ "%.3f"|format(kappa) }} & $\pm${{ "%.3f"|format(kappa_std) }} \\
+        AUC & {{ "%.3f"|format(auc) }} & $\pm${{ "%.3f"|format(auc_std) }} \\
+        \bottomrule
+    \end{tabular}
+    \caption{分类性能指标}
+\end{table}
+
+\subsubsection{混淆矩阵}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lcc}
+        \toprule
+         & 预测左手 & 预测右手 \\
+        \midrule
+        实际左手 & {{ cm[0,0] }} & {{ cm[0,1] }} \\
+        实际右手 & {{ cm[1,0] }} & {{ cm[1,1] }} \\
+        \bottomrule
+    \end{tabular}
+    \caption{混淆矩阵}
+\end{table}
+
+\subsubsection{算法配置}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{ll}
+        \toprule
+        项目 & 值 \\
+        \midrule
+        算法 & {{ algorithm }} \\
+        交叉验证 & {{ cv_method }} ({{ n_folds }}折) \\
+        训练时间 & {{ training_time }}秒 \\
+        推理时间 & {{ inference_time }}毫秒 \\
+        \bottomrule
+    \end{tabular}
+    \caption{算法配置信息}
+\end{table}
+
+\section{统计分析}
+
+{% for test in statistical_tests %}
+\subsection{{ test.test_name }}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{ll}
+        \toprule
+        统计量 & {{ "%.4f"|format(test.statistic) }} \\
+        p值 & {{ "%.4f"|format(test.p_value) }} \\
+        显著性 & {% if test.significant %}显著 ($p < 0.05$){% else %}不显著 ($p \ge 0.05$){% endif %} \\
+        效应量 & {{ "%.4f"|format(test.effect_size) }} \\
+        95\%置信区间 & ({{ "%.4f"|format(test.confidence_interval[0]) }}, {{ "%.4f"|format(test.confidence_interval[1]) }}) \\
+        比较组 & {{ test.comparison_groups[0] }} vs {{ test.comparison_groups[1] }} \\
+        \bottomrule
+    \end{tabular}
+    \caption{{ test.test_name }}结果
+\end{table}
+{% endfor %}
+
+\section{可视化结果}
+
+{% for figure_name, figure_path in figures.items() %}
+\subsection{{ figure_name }}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{{ figure_path }}
+    \caption{{ figure_name }}
+    \label{fig:{{ figure_name|replace(" ", "_") }}}
+\end{figure}
+{% endfor %}
+
+\section{结论与讨论}
+
+\subsection{主要发现}
+% 自动生成的主要发现
+{% if accuracy > 0.85 %}
+实验结果表明，{{ algorithm }}算法在运动想象分类任务上取得了良好的性能（准确率 = {{ "%.1f"|format(accuracy*100) }}\%），显著优于随机水平。
+{% else %}
+实验结果显示分类性能有待进一步提升，建议优化特征提取方法或增加训练数据。
+{% endif %}
+
+\subsection{局限性}
+% 自动识别的局限性
+{% if n_subjects < 20 %}
+\textbf{样本量限制}：当前实验仅包含{{ n_subjects }}名被试，样本量较小，可能影响结果的普适性。
+{% endif %}
+
+{% if cv_folds < 10 %}
+\textbf{交叉验证}：采用{{ cv_folds }}折交叉验证，建议使用更多折数以获得更稳定的估计。
+{% endif %}
+
+\subsection{未来工作}
+\begin{itemize}
+    \item 增加被试数量，提高统计功效
+    \item 探索更先进的深度学习模型
+    \item 实现实时反馈闭环系统
+    \item 开展多中心临床验证研究
+\end{itemize}
+
+\section*{参考文献}
+\begin{enumerate}
+    \item Zhang, X., et al. (2024). EEGNet: A Compact Convolutional Network for EEG-based Brain-Computer Interfaces. \textit{IEEE TBME}.
+    \item Lawhern, V. J., et al. (2018). EEGNet: A compact convolutional neural network for EEG-based brain-computer interfaces. \textit{Journal of Neural Engineering}.
+    \item Schirrmeister, R. T., et al. (2017). Deep learning with convolutional neural networks for EEG decoding and visualization. \textit{Human Brain Mapping}.
+\end{enumerate}
+
+\section*{附录}
+\subsection{原始数据说明}
+所有原始数据已按照数据管理规范存储，可通过以下方式访问：
+\begin{itemize}
+    \item 数据存储路径: \texttt{./datasets/{{ experiment_id }}}
+    \item 预处理代码: \texttt{./src/preprocessing/}
+    \item 分析脚本: \texttt{./src/pipeline/}
+\end{itemize}
+
+\subsection{软件环境}
+\begin{lstlisting}
+操作系统: {{ os_info }}
+Python版本: {{ python_version }}
+主要依赖:
+- numpy: {{ numpy_version }}
+- scipy: {{ scipy_version }}
+- scikit-learn: {{ sklearn_version }}
+- torch: {{ torch_version }}
+- mne: {{ mne_version }}
+\end{lstlisting}
+
+\newpage
+\centerline{\small 本报告由BCI运动想象康复训练平台自动生成}
+\centerline{\small 报告生成时间: {{ generation_time }}}
+
+\end{document}

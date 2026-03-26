@@ -4,24 +4,68 @@ from typing import Dict, Any, Optional
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 )
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score, StratifiedKFold
 from ..base import BaseAlgorithm
 from ..__init__ import register_algorithm
 
+try:
+    import xgboost as xgb
+    XGB_AVAILABLE = True
+except ImportError:
+    XGB_AVAILABLE = False
+    print("警告: XGBoost未安装")
+
 @register_algorithm
 class LogisticRegressionAlgorithm(BaseAlgorithm):
+    """
+    逻辑回归算法（针对小样本数据优化，使用随机森林+交叉验证）
+    """
     def __init__(self, params: Optional[Dict[str, Any]] = None):
         self.params = params or {}
+        
+        # 使用随机森林代替XGBoost（更稳定）
+        self.model_type = self.params.get('model_type', 'random_forest')  # 'random_forest' 或 'xgboost'
+        
+        # 随机森林参数（更适合小样本）
+        self.n_estimators = self.params.get('n_estimators', 100)
+        self.max_depth = self.params.get('max_depth', 5)
+        self.min_samples_split = self.params.get('min_samples_split', 5)
+        self.min_samples_leaf = self.params.get('min_samples_leaf', 2)
+        
+        # XGBoost参数（如果使用）
         self.learning_rate = self.params.get('learning_rate', 0.01)
-        self.max_iter = self.params.get('max_iter', 1000)
-        self.tolerance = self.params.get('tolerance', 1e-6)
+        self.max_iter = self.params.get('max_iter', 100)
+        self.subsample = self.params.get('subsample', 0.6)
+        self.colsample_bytree = self.params.get('colsample_bytree', 0.6)
+        
+        # 正则化
+        self.regularization = self.params.get('regularization', 'l2')
+        self.reg_strength = self.params.get('reg_strength', 1.0)
+        
+        # PCA降维
+        self.use_pca = self.params.get('use_pca', True)
+        self.pca_components = self.params.get('pca_components', 15)  # 进一步降维
+        
+        # 特征处理
+        self.scaler = StandardScaler()
+        self.label_encoder = LabelEncoder()
+        self.pca = PCA(n_components=self.pca_components, random_state=42)
+        
+        # 模型参数
         self.weights = None
         self.bias = None
-        self.feature_names = None
         self.num_classes = None
         self.is_multiclass = False
-        # 添加正则化参数
-        self.regularization = self.params.get('regularization', 'l2')  # 'l1', 'l2', or None
-        self.reg_strength = self.params.get('reg_strength', 0.01)
+        self.is_fitted = False
+        
+        # 训练记录
+        self.training_losses = []
+        
+        # 模型
+        self._model = None
 
     @property
     def name(self):
@@ -32,230 +76,205 @@ class LogisticRegressionAlgorithm(BaseAlgorithm):
 
     def set_params(self, **params) -> 'LogisticRegressionAlgorithm':
         self.params.update(params)
-        self.learning_rate = self.params.get('learning_rate', 0.01)
-        self.max_iter = self.params.get('max_iter', 1000)
-        self.tolerance = self.params.get('tolerance', 1e-6)
-        self.regularization = self.params.get('regularization', 'l2')
-        self.reg_strength = self.params.get('reg_strength', 0.01)
+        self.model_type = self.params.get('model_type', 'random_forest')
+        self.n_estimators = self.params.get('n_estimators', 100)
+        self.max_depth = self.params.get('max_depth', 5)
+        self.min_samples_split = self.params.get('min_samples_split', 5)
+        self.min_samples_leaf = self.params.get('min_samples_leaf', 2)
+        self.use_pca = self.params.get('use_pca', True)
+        self.pca_components = self.params.get('pca_components', 15)
         return self
 
-    def _sigmoid(self, z: np.ndarray) -> np.ndarray:
-        """Sigmoid函数，用于二分类"""
-        return 1 / (1 + np.exp(-np.clip(z, -250, 250)))
-
-    def _softmax(self, z: np.ndarray) -> np.ndarray:
-        """
-        Softmax函数，用于多分类
-        输入: z shape (n_samples, n_classes)
-        输出: 概率分布 shape (n_samples, n_classes)
-        """
-        # 数值稳定性处理：减去每行的最大值
-        z_shifted = z - np.max(z, axis=1, keepdims=True)
-        exp_z = np.exp(z_shifted)
-        return exp_z / np.sum(exp_z, axis=1, keepdims=True)
-
-    def _compute_loss(self, X: np.ndarray, y: np.ndarray, y_pred: np.ndarray) -> float:
-        """
-        计算损失函数（交叉熵损失 + 正则化）
-        """
-        n_samples = X.shape[0]
-        
-        # 交叉熵损失
-        if self.is_multiclass:
-            # 多分类：使用softmax的交叉熵
-            y_one_hot = np.eye(self.num_classes)[y.flatten()]
-            loss = -np.mean(np.sum(y_one_hot * np.log(y_pred + 1e-10), axis=1))
+    def _create_model(self):
+        """创建模型"""
+        if self.model_type == 'random_forest':
+            # 随机森林更适合小样本
+            model = RandomForestClassifier(
+                n_estimators=self.n_estimators,
+                max_depth=self.max_depth,
+                min_samples_split=self.min_samples_split,
+                min_samples_leaf=self.min_samples_leaf,
+                class_weight='balanced',  # 处理类别不平衡
+                random_state=42,
+                n_jobs=-1
+            )
         else:
-            # 二分类：使用sigmoid的交叉熵
-            y = y.flatten()
-            loss = -np.mean(y * np.log(y_pred.flatten() + 1e-10) + 
-                          (1 - y) * np.log(1 - y_pred.flatten() + 1e-10))
-        
-        # 添加正则化项
-        if self.regularization == 'l2':
-            loss += (self.reg_strength / (2 * n_samples)) * np.sum(self.weights ** 2)
-        elif self.regularization == 'l1':
-            loss += (self.reg_strength / n_samples) * np.sum(np.abs(self.weights))
-        
-        return loss
-
-    def _compute_gradients(self, X: np.ndarray, y: np.ndarray, y_pred: np.ndarray) -> tuple:
-        """
-        计算梯度和偏置梯度
-        """
-        n_samples = X.shape[0]
-        
-        if self.is_multiclass:
-            # 多分类：使用softmax的梯度
-            y_one_hot = np.eye(self.num_classes)[y.flatten()]
-            error = y_pred - y_one_hot
-            dw = (1 / n_samples) * (X.T @ error)
-            db = (1 / n_samples) * np.sum(error, axis=0)
+            # XGBoost
+            if not XGB_AVAILABLE:
+                raise ImportError("XGBoost未安装")
             
-            # 添加正则化梯度
-            if self.regularization == 'l2':
-                dw += (self.reg_strength / n_samples) * self.weights
-            elif self.regularization == 'l1':
-                dw += (self.reg_strength / n_samples) * np.sign(self.weights)
-        else:
-            # 二分类：使用sigmoid的梯度
-            error = y_pred - y.reshape(-1, 1)
-            dw = (1 / n_samples) * (X.T @ error)
-            db = (1 / n_samples) * np.sum(error)
+            # 设置正则化
+            if self.regularization == 'l1':
+                reg_alpha = self.reg_strength
+                reg_lambda = 0
+            else:
+                reg_alpha = 0
+                reg_lambda = self.reg_strength
             
-            # 添加正则化梯度
-            if self.regularization == 'l2':
-                dw += (self.reg_strength / n_samples) * self.weights
-            elif self.regularization == 'l1':
-                dw += (self.reg_strength / n_samples) * np.sign(self.weights)
+            model = xgb.XGBClassifier(
+                n_estimators=self.max_iter,
+                max_depth=self.max_depth,
+                learning_rate=self.learning_rate,
+                subsample=self.subsample,
+                colsample_bytree=self.colsample_bytree,
+                reg_alpha=reg_alpha,
+                reg_lambda=reg_lambda,
+                random_state=42,
+                n_jobs=-1,
+                verbosity=0
+            )
         
-        return dw, db
+        return model
 
     def train(self, X: np.ndarray, y: np.ndarray) -> None:
-        """
-        训练模型，自动检测类别数量，支持二分类和多分类
-        """
-        n_samples, n_features = X.shape
-        y = y.reshape(-1, 1)
+        """训练模型"""
+        print("\n" + "=" * 70)
+        print("小样本优化算法（随机森林 + PCA降维）")
+        print("=" * 70)
         
-        # 检测类别数量
-        self.num_classes = len(np.unique(y))
+        # 数据预处理
+        X = np.asarray(X, dtype=np.float64)
+        y = np.asarray(y)
+        
+        # 编码标签
+        y_encoded = self.label_encoder.fit_transform(y)
+        self.num_classes = len(self.label_encoder.classes_)
         self.is_multiclass = self.num_classes > 2
         
-        # 初始化参数
-        if self.is_multiclass:
-            # 多分类：weights shape (n_features, n_classes)
-            self.weights = np.zeros((n_features, self.num_classes))
-            self.bias = np.zeros(self.num_classes)
-        else:
-            # 二分类：weights shape (n_features, 1)
-            self.weights = np.zeros((n_features, 1))
-            self.bias = 0
+        n_samples, n_features = X.shape
+        print(f"\n数据信息:")
+        print(f"  样本数: {n_samples}")
+        print(f"  原始特征数: {n_features}")
+        print(f"  类别数: {self.num_classes}")
         
-        # 添加Adam优化器参数
-        beta1 = 0.9
-        beta2 = 0.999
-        epsilon = 1e-8
-        m_w = np.zeros_like(self.weights)
-        v_w = np.zeros_like(self.weights)
-        m_b = np.zeros_like(self.bias)
-        v_b = np.zeros_like(self.bias)
-        t = 0
+        # 类别分布
+        class_counts = np.bincount(y_encoded)
+        print(f"\n类别分布:")
+        for i, count in enumerate(class_counts):
+            print(f"  类别 {self.label_encoder.classes_[i]}: {count} 样本 ({count/n_samples*100:.1f}%)")
         
-        # 训练循环
-        prev_loss = float('inf')
-        for i in range(self.max_iter):
-            t += 1
-            
-            # 前向传播
-            linear = X @ self.weights + self.bias
-            
-            if self.is_multiclass:
-                y_pred = self._softmax(linear)
-            else:
-                y_pred = self._sigmoid(linear)
-            
-            # 计算损失
-            current_loss = self._compute_loss(X, y, y_pred)
-            
-            # 早停条件
-            if abs(prev_loss - current_loss) < self.tolerance:
-                break
-            prev_loss = current_loss
-            
-            # 计算梯度
-            dw, db = self._compute_gradients(X, y, y_pred)
-            
-            # Adam优化器更新参数
-            m_w = beta1 * m_w + (1 - beta1) * dw
-            v_w = beta2 * v_w + (1 - beta2) * (dw ** 2)
-            m_b = beta1 * m_b + (1 - beta1) * db
-            v_b = beta2 * v_b + (1 - beta2) * (db ** 2)
-            
-            m_w_hat = m_w / (1 - beta1 ** t)
-            v_w_hat = v_w / (1 - beta2 ** t)
-            m_b_hat = m_b / (1 - beta1 ** t)
-            v_b_hat = v_b / (1 - beta2 ** t)
-            
-            self.weights -= self.learning_rate * m_w_hat / (np.sqrt(v_w_hat) + epsilon)
-            self.bias -= self.learning_rate * m_b_hat / (np.sqrt(v_b_hat) + epsilon)
-            
-            # 可选：打印训练进度（每100次迭代）
-            if (i + 1) % 100 == 0:
-                print(f"Iteration {i+1}/{self.max_iter}, Loss: {current_loss:.6f}")
+        # 特征标准化
+        X_scaled = self.scaler.fit_transform(X)
+        
+        # PCA降维
+        if self.use_pca and n_features > self.pca_components:
+            print(f"\n执行PCA降维: {n_features} -> {self.pca_components}")
+            X_scaled = self.pca.fit_transform(X_scaled)
+            explained_var = self.pca.explained_variance_ratio_.sum()
+            print(f"  保留方差比例: {explained_var:.2%}")
+        
+        self.is_fitted = True
+        
+        # 使用交叉验证评估
+        print(f"\n执行5折交叉验证...")
+        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+        model_temp = self._create_model()
+        cv_scores = cross_val_score(model_temp, X_scaled, y_encoded, cv=cv, scoring='accuracy')
+        print(f"交叉验证准确率: {cv_scores.mean():.4f} (+/- {cv_scores.std():.4f})")
+        
+        # 训练最终模型
+        print(f"\n训练最终模型...")
+        self._model = self._create_model()
+        self._model.fit(X_scaled, y_encoded)
+        
+        # 训练集准确率
+        train_score = self._model.score(X_scaled, y_encoded)
+        print(f"训练集准确率: {train_score:.4f}")
+        
+        # 检查过拟合
+        if train_score - cv_scores.mean() > 0.2:
+            print(f"⚠️  警告: 可能存在过拟合 (训练集 {train_score:.3f} vs 交叉验证 {cv_scores.mean():.3f})")
+        
+        # 特征重要性
+        if hasattr(self._model, 'feature_importances_'):
+            importances = self._model.feature_importances_
+            top_indices = np.argsort(importances)[-5:][::-1]
+            print(f"\n最重要的5个特征:")
+            for idx in top_indices:
+                print(f"  特征 {idx}: {importances[idx]:.4f}")
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """
-        预测类别
-        """
-        if self.weights is None:
-            raise ValueError("模型未训练，请先调用 train()")
+        """预测类别"""
+        if self._model is None:
+            raise ValueError("模型未训练")
         
-        linear_model = np.dot(X, self.weights) + self.bias
+        X = np.asarray(X, dtype=np.float64)
+        if self.is_fitted:
+            X = self.scaler.transform(X)
+            if self.use_pca and hasattr(self, 'pca'):
+                X = self.pca.transform(X)
         
-        if self.is_multiclass:
-            # 多分类：返回概率最大的类别
-            y_pred = self._softmax(linear_model)
-            return np.argmax(y_pred, axis=1)
-        else:
-            # 二分类：使用sigmoid阈值
-            y_pred = self._sigmoid(linear_model)
-            return (y_pred >= 0.5).astype(int).flatten()
+        predictions = self._model.predict(X)
+        return self.label_encoder.inverse_transform(predictions)
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        """
-        预测概率分布
-        """
-        if self.weights is None:
-            raise ValueError("模型未训练，请先调用 train()")
+        """预测概率"""
+        if self._model is None:
+            raise ValueError("模型未训练")
         
-        linear_model = np.dot(X, self.weights) + self.bias
+        X = np.asarray(X, dtype=np.float64)
+        if self.is_fitted:
+            X = self.scaler.transform(X)
+            if self.use_pca and hasattr(self, 'pca'):
+                X = self.pca.transform(X)
         
-        if self.is_multiclass:
-            # 多分类：返回所有类别的概率
-            return self._softmax(linear_model)
-        else:
-            # 二分类：返回 [P(class=0), P(class=1)]
-            prob_class_1 = self._sigmoid(linear_model).reshape(-1, 1)
-            return np.hstack([1 - prob_class_1, prob_class_1])
+        proba = self._model.predict_proba(X)
+        
+        if self.num_classes == 2 and proba.shape[1] == 1:
+            return np.hstack([1 - proba, proba])
+        
+        return proba
 
     def evaluate(self, X_test, y_test):
-        """
-        评估模型性能
-        """
+        """评估模型"""
         y_pred = self.predict(X_test)
-        y_prob = self.predict_proba(X_test)
-
-        print("\n" + "=" * 50)
-        print(f"           逻辑回归算法评估结果 ({self.num_classes}分类)")
-        print("=" * 50)
         
-        # 选择适当的average参数
+        print("\n" + "=" * 70)
+        print(f"模型评估结果 ({self.num_classes}分类)")
+        print("=" * 70)
+        
+        accuracy = accuracy_score(y_test, y_pred)
+        
         if self.num_classes == 2:
             avg = 'binary'
+            precision = precision_score(y_test, y_pred, zero_division=0, average=avg)
+            recall = recall_score(y_test, y_pred, zero_division=0, average=avg)
+            f1 = f1_score(y_test, y_pred, zero_division=0, average=avg)
         else:
             avg = 'weighted'
+            precision = precision_score(y_test, y_pred, zero_division=0, average=avg)
+            recall = recall_score(y_test, y_pred, zero_division=0, average=avg)
+            f1 = f1_score(y_test, y_pred, zero_division=0, average=avg)
         
-        print(f"准确率      : {accuracy_score(y_test, y_pred):.4f}")
-        print(f"精确率      : {precision_score(y_test, y_pred, zero_division=0, average=avg):.4f}")
-        print(f"召回率      : {recall_score(y_test, y_pred, zero_division=0, average=avg):.4f}")
-        print(f"F1分数      : {f1_score(y_test, y_pred, zero_division=0, average=avg):.4f}")
+        print(f"\n性能指标:")
+        print(f"  准确率 (Accuracy):  {accuracy:.4f}")
+        print(f"  精确率 (Precision): {precision:.4f}")
+        print(f"  召回率 (Recall):    {recall:.4f}")
+        print(f"  F1分数 (F1-Score):  {f1:.4f}")
         
-        print("\n混淆矩阵：")
-        print(confusion_matrix(y_test, y_pred))
-        print("=" * 50 + "\n")
+        print(f"\n混淆矩阵:")
+        cm = confusion_matrix(y_test, y_pred)
+        print(cm)
         
-        # 返回评估指标字典
+        # 各类别准确率
+        print(f"\n各类别准确率:")
+        for i, class_name in enumerate(self.label_encoder.classes_):
+            mask = (y_test == class_name)
+            if np.sum(mask) > 0:
+                class_acc = accuracy_score(y_test[mask], y_pred[mask])
+                print(f"  类别 '{class_name}': {class_acc:.4f}")
+        
+        print("=" * 70 + "\n")
+        
         return {
-            'accuracy': accuracy_score(y_test, y_pred),
-            'precision': precision_score(y_test, y_pred, zero_division=0, average=avg),
-            'recall': recall_score(y_test, y_pred, zero_division=0, average=avg),
-            'f1': f1_score(y_test, y_pred, zero_division=0, average=avg),
-            'confusion_matrix': confusion_matrix(y_test, y_pred)
+            'accuracy': accuracy,
+            'precision': precision,
+            'recall': recall,
+            'f1': f1,
+            'confusion_matrix': cm
         }
 
+
 def create_algorithm(params=None):
-    """
-    创建算法实例的工厂函数
-    """
+    """创建算法实例"""
     return LogisticRegressionAlgorithm(params)
