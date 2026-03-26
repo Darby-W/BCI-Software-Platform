@@ -22,20 +22,20 @@ from pathlib import Path
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 
-# === 获取项目根目录（跨平台兼容）===
+# === 获取项目目录（跨平台）===
 PROJECT_ROOT = Path(__file__).parent.absolute()
 DATASETS_DIR = PROJECT_ROOT / "datasets"
 RESULTS_DIR = PROJECT_ROOT / "results"
 FIGURES_DIR = RESULTS_DIR / "figures"
 REPORTS_DIR = RESULTS_DIR / "reports"
 
-# 确保目录存在
+# 确保基础目录存在
 DATASETS_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-# === 后端系统 ===
+# === 你的后端系统 ===
 from src.pipeline.run_pipeline import run_pipeline
 from src.algorithms.registry import AlgorithmRegistry
 from src.data_mgmt.storage.data_hierarchical_directory_structure import get_all_experiments
