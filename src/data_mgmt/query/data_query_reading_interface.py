@@ -63,7 +63,9 @@ class BCIDataSystem:
         for root, dirs, files in os.walk(self.data_dir):
             for file in files:
                 if file.lower().endswith((".edf", ".csv")):
-                    data_id = f"exp_{str(idx).zfill(3)}"
+                    file_name_no_ext = os.path.splitext(file)[0]  # A01T
+
+                    data_id = file_name_no_ext
                     fmt = "EDF" if file.lower().endswith(".edf") else "CSV"
                     file_path = os.path.abspath(os.path.join(root, file))
                     data_map[data_id] = {
@@ -141,11 +143,19 @@ class BCIDataSystem:
     def _read_csv(self, file_path: str, data_id: str) -> Dict:
         try:
             df = pd.read_csv(file_path)
-            channel_cols = [col for col in df.columns if any(key in col.lower() for key in ["eeg", "ch","f"])]
+
+            channel_cols = [col for col in df.columns if any(key in col.lower() for key in ["eeg", "ch", "f"])]
+
             if not channel_cols:
-                raise ValueError("未找到EEG通道列（列名建议包含EEG/Ch）")
-            # ===== 判断是否是 trial 展平格式 =====
+                raise ValueError("未找到EEG通道列")
+
+            label_col = next((col for col in LABEL_COLUMNS if col in df.columns), None)
+
+            # =========================
+            # ✅ 情况1：trial 展平格式
+            # =========================
             if any("_t" in col for col in channel_cols):
+
                 print("检测到 trial 展平格式CSV，自动还原3D结构")
 
                 num_trials = df.shape[0]
@@ -153,26 +163,74 @@ class BCIDataSystem:
                 num_timepoints = 1000
 
                 X_flat = df[channel_cols].values
-
                 X = X_flat.reshape(num_trials, num_channels, num_timepoints)
 
+                if label_col:
+                    y = df[label_col].values.astype(int)
+                else:
+                    y = np.zeros(num_trials)
+
+            # =========================
+            # ✅ 情况2：连续信号
+            # =========================
             else:
-                # 原始时间序列格式（备用）
-                X = df[channel_cols].values
-            y = np.zeros(X.shape[0], dtype=int)
-            label_col = next((col for col in LABEL_COLUMNS if col in df.columns), None)
-            if label_col:
-                y = df[label_col].values.astype(int)
+
+                print("检测到连续信号CSV，使用事件切分trial")
+
+                X_raw = df[channel_cols].values  # (time, channels)
+
+                label_col = next((col for col in LABEL_COLUMNS if col in df.columns), None)
+
+                if label_col is None:
+                    raise ValueError("连续数据必须有标签列（event）")
+
+                y_raw = df[label_col].values
+
+                fs = DEFAULT_SAMPLE_RATE
+
+                # ⭐ trial窗口
+                start_offset = int(0.5 * fs)
+                end_offset = int(2.5 * fs)
+
+                X_trials = []
+                y_trials = []
+
+                for i in range(len(y_raw)):
+
+                    # 找事件点（标签变化）
+                    if y_raw[i] != 0:
+
+                        start = i + start_offset
+                        end = i + end_offset
+
+                        if end < len(X_raw):
+                            trial = X_raw[start:end]  # (time, channel)
+                            trial = trial.T  # (channel, time)
+
+                            X_trials.append(trial)
+                            y_trials.append(y_raw[i])
+
+                X = np.array(X_trials)
+                y = np.array(y_trials)
+
+                print(f"事件切分得到: {X.shape}")
+
+            # =========================
+            # meta
+            # =========================
             meta = {
                 "data_id": data_id,
                 "file_name": self.data_map[data_id]["file_name"],
                 "channels": channel_cols,
                 "sampling_rate": DEFAULT_SAMPLE_RATE,
-                "total_time": len(df) / DEFAULT_SAMPLE_RATE,
                 "raw_format": "CSV",
                 "file_path": file_path
             }
+
+            print("最终数据:", X.shape, y.shape)
+
             return {"X": X, "y": y, "meta": meta}
+
         except Exception as e:
             raise ValueError(f"读取CSV文件失败：{str(e)}")
 

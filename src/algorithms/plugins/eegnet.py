@@ -16,7 +16,7 @@ class EEGNetAlgorithm(BaseAlgorithm):
     def __init__(self, params: Optional[Dict[str, Any]] = None):
         # 初始化参数（兼容params格式，默认值适配BCICIV_2a）
         self.params = params or {}
-        self.epochs = self.params.get('epochs', 50)
+        self.epochs = self.params.get('epochs', 20)
         self.batch_size = self.params.get('batch_size', 16)
         self.learning_rate = self.params.get('learning_rate', 1e-3)
         self.tolerance = self.params.get('tolerance', 1e-6)

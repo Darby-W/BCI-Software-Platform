@@ -3,19 +3,21 @@ from .band_pass_filter import BandpassFilter
 import numpy as np
 
 class Preprocessing:
-    def __init__(self, fs):
+    def __init__(self, fs, low=8, high=30):
         self.fs = fs
+        self.low = low
+        self.high = high
 
     def apply(self, X):
 
         notch = NotchFilter(freq=50, fs=self.fs)
         bandpass = BandpassFilter(
-            lowcut=8,
-            highcut=30,
+            lowcut=self.low,
+            highcut=self.high,
             fs=self.fs
         )
 
-        # 🔥 支持3D数据（trial级）
+        # 支持3D数据（trial级）
         if X.ndim == 3:
             print("检测到3D数据，逐trial进行预处理")
 
@@ -29,7 +31,7 @@ class Preprocessing:
 
             return np.array(X_processed)
 
-        # 🔥 原始2D数据（兼容）
+        # 原始2D数据（兼容）
         elif X.ndim == 2:
             X = notch.apply(X)
             X = bandpass.apply(X)
