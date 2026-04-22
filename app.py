@@ -1,5 +1,5 @@
 # ==============================
-# 🧠 BCI运动想象康复训练与教学实训平台
+# 🧠 大模型Agent驱动的BCI智能平台
 # streamlit run app.py --server.maxUploadSize 1024
 # ==============================
 
@@ -67,12 +67,12 @@ except:
 # ==============================
 
 st.set_page_config(
-    page_title="BCI康复训练平台",
+    page_title="BCI智能平台",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.title("🧠 运动想象BCI康复训练与教学实训平台")
+st.title("🧠 大模型Agent驱动的BCI智能平台")
 
 # ==============================
 # Sidebar（核心控制台）- 包含文件上传和GDF转换
