@@ -1,11 +1,11 @@
 import argparse
 import os
-from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from src.algorithms.registry import AlgorithmRegistry
 from src import BCIDataSystem
+from src.utils.paths import default_third_party_data_dir, resolve_project_path
 
 def main():
     parser = argparse.ArgumentParser(description="算法插件化运行框架")
@@ -14,11 +14,8 @@ def main():
     parser.add_argument("--data_dir", default=None, help="数据目录（优先于环境变量 BCI_DATA_DIR）")
     args = parser.parse_args()
 
-    project_root = Path(__file__).resolve().parent
-    configured_data_dir = args.data_dir or os.getenv("BCI_DATA_DIR") or "src/data_mgmt/data_tools/third_party_device_data"
-    resolved_data_dir = Path(configured_data_dir)
-    if not resolved_data_dir.is_absolute():
-        resolved_data_dir = project_root / resolved_data_dir
+    configured_data_dir = args.data_dir or os.getenv("BCI_DATA_DIR")
+    resolved_data_dir = resolve_project_path(configured_data_dir) if configured_data_dir else default_third_party_data_dir()
 
     # ====================== 自动发现所有算法 ======================
     AlgorithmRegistry.discover()

@@ -4,6 +4,7 @@
 
 import sys
 import os
+from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
@@ -18,7 +19,8 @@ class TestPublicationPlotter:
     
     def setup_method(self):
         """测试前准备"""
-        self.plotter = PublicationPlotter(output_dir="./test_figures")
+        test_output_dir = Path(__file__).resolve().parent / "test_figures"
+        self.plotter = PublicationPlotter(output_dir=str(test_output_dir))
         
         # 生成测试数据
         self.cm = np.array([[85, 15], [12, 88]])
@@ -158,7 +160,8 @@ class TestInteractivePlotter:
     
     def setup_method(self):
         """测试前准备"""
-        self.plotter = InteractivePlotter(output_dir="./test_figures")
+        test_output_dir = Path(__file__).resolve().parent / "test_figures"
+        self.plotter = InteractivePlotter(output_dir=str(test_output_dir))
         
         # 生成测试数据
         self.evoked_data = {

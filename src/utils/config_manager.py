@@ -11,13 +11,16 @@ from typing import Dict, Any, Optional
 from dataclasses import dataclass, asdict
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
 @dataclass
 class SystemConfig:
     """系统配置"""
     debug: bool = False
     log_level: str = "INFO"
-    output_dir: str = "./results"
-    cache_dir: str = "./cache"
+    output_dir: str = str(PROJECT_ROOT / "results")
+    cache_dir: str = str(PROJECT_ROOT / "cache")
     max_workers: int = 4
     gpu_enabled: bool = False
     gpu_id: int = 0
@@ -65,8 +68,9 @@ class ConfigManager:
     管理实验配置和系统设置
     """
     
-    def __init__(self, config_dir: str = "./config"):
-        self.config_dir = Path(config_dir)
+    def __init__(self, config_dir: str = None):
+        default_config_dir = PROJECT_ROOT / "config"
+        self.config_dir = Path(config_dir) if config_dir else default_config_dir
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.system_config = SystemConfig()
         self.experiment_configs = {}

@@ -5,6 +5,10 @@ from scipy.io import loadmat  # 可选：导入scipy解析MAT文件
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error
 from algorithms.registry import AlgorithmRegistry
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent
 
 def main():
     parser = argparse.ArgumentParser(description="Run algorithm plugin.")
@@ -27,7 +31,7 @@ def main():
         if args.algo == "baseline":
             # 加载分类任务的自定义CSV数据集
             # 请替换为你的CSV文件路径
-            data_path = "./data/my_bci_classify.csv"
+            data_path = PROJECT_ROOT / "data" / "my_bci_classify.csv"
             df = pd.read_csv(data_path)
             # 分离特征（X）和标签（y）：假设最后一列是标签
             X = df.iloc[:, :-1].values  # 所有行，除最后一列外的所有列
@@ -38,7 +42,7 @@ def main():
             )
         elif args.algo == "dummy":
             # 加载回归任务的自定义CSV数据集
-            data_path = "./data/my_bci_regress.csv"
+            data_path = PROJECT_ROOT / "data" / "my_bci_regress.csv"
             df = pd.read_csv(data_path)
             X = df.iloc[:, :-1].values
             y = df.iloc[:, -1].values
