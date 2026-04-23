@@ -1,67 +1,24 @@
 """
 报告导出模块
-支持多种格式导出
+支持 JSON/CSV/Excel/Markdown 导出
 """
 
-import os
 import json
 import pandas as pd
 from pathlib import Path
-from typing import Optional, Dict, Any
-import warnings
-
-try:
-    import markdown
-    MARKDOWN_AVAILABLE = True
-except ImportError:
-    MARKDOWN_AVAILABLE = False
-
-try:
-    from weasyprint import HTML
-    WEASYPRINT_AVAILABLE = True
-except ImportError:
-    WEASYPRINT_AVAILABLE = False
-
+from typing import Dict, Any
 
 class ReportExporter:
     """
     报告导出器
-    支持导出为PDF、DOCX、JSON等格式
+    支持导出为 JSON/CSV/Excel/Markdown 等格式
     """
     
-    def __init__(self, output_dir: str = "./results/exports"):
-        self.output_dir = Path(output_dir)
+    def __init__(self, output_dir: str = None):
+        project_root = Path(__file__).resolve().parents[2]
+        default_output = project_root / "results" / "exports"
+        self.output_dir = Path(output_dir) if output_dir else default_output
         self.output_dir.mkdir(parents=True, exist_ok=True)
-    
-    def export_to_pdf(
-        self,
-        html_content: str,
-        filename: str,
-        title: str = "BCI Experiment Report"
-    ) -> Optional[str]:
-        """
-        导出为PDF格式
-        
-        Args:
-            html_content: HTML内容
-            filename: 输出文件名
-            title: 文档标题
-        
-        Returns:
-            输出文件路径
-        """
-        if not WEASYPRINT_AVAILABLE:
-            warnings.warn("WeasyPrint not installed. PDF export disabled.")
-            return None
-        
-        output_path = self.output_dir / f"{filename}.pdf"
-        
-        try:
-            HTML(string=html_content).write_pdf(output_path)
-            return str(output_path)
-        except Exception as e:
-            print(f"PDF export failed: {e}")
-            return None
     
     def export_to_json(
         self,

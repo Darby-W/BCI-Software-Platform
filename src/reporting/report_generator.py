@@ -32,8 +32,10 @@ class ExperimentMetadata:
 class ExperimentReportGenerator:
     """实验报告生成器"""
     
-    def __init__(self, output_dir: str = "./results/reports"):
-        self.output_dir = Path(output_dir)
+    def __init__(self, output_dir: str = None):
+        project_root = Path(__file__).resolve().parents[2]
+        default_output = project_root / "results" / "reports"
+        self.output_dir = Path(output_dir) if output_dir else default_output
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.stat_analyzer = StatisticalAnalyzer()
         self.plotter = PublicationPlotter()

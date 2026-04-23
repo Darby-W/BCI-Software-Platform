@@ -4,6 +4,7 @@
 
 import sys
 import os
+from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
@@ -21,7 +22,8 @@ class TestReportGenerator:
     
     def setup_method(self):
         """测试前准备"""
-        self.generator = ExperimentReportGenerator(output_dir="./test_reports")
+        test_output_dir = Path(__file__).resolve().parent / "test_reports"
+        self.generator = ExperimentReportGenerator(output_dir=str(test_output_dir))
         
         # 创建测试数据
         self.metadata = ExperimentMetadata(

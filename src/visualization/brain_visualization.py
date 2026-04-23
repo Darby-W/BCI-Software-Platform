@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import List, Dict, Optional, Tuple
 import warnings
+from pathlib import Path
 
 # 尝试导入PyVista，如果失败则创建占位符
 try:
@@ -28,8 +29,11 @@ class Brain3DVisualization:
     支持脑区激活、源定位、脑网络可视化
     """
     
-    def __init__(self, output_dir: str = "./results/figures"):
-        self.output_dir = output_dir
+    def __init__(self, output_dir: str = None):
+        project_root = Path(__file__).resolve().parents[2]
+        default_output = project_root / "results" / "figures"
+        self.output_dir = Path(output_dir) if output_dir else default_output
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         self.plotter = None
         self._pyvista_available = PYVISTA_AVAILABLE
         

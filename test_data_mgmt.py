@@ -1,13 +1,10 @@
 import os
-from pathlib import Path
 
 from src.data_mgmt.query import BCIDataSystem
+from src.utils.paths import default_third_party_data_dir, resolve_project_path
 
-project_root = Path(__file__).resolve().parent
-configured_data_dir = os.getenv("BCI_DATA_DIR") or "src/data_mgmt/data_tools/third_party_device_data"
-resolved_data_dir = Path(configured_data_dir)
-if not resolved_data_dir.is_absolute():
-	resolved_data_dir = project_root / resolved_data_dir
+configured_data_dir = os.getenv("BCI_DATA_DIR")
+resolved_data_dir = resolve_project_path(configured_data_dir) if configured_data_dir else default_third_party_data_dir()
 
 bci = BCIDataSystem(data_dir=str(resolved_data_dir))
 

@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict, Optional, Tuple
 import warnings
+from pathlib import Path
 
 
 class InteractivePlotter:
@@ -17,8 +18,11 @@ class InteractivePlotter:
     使用Plotly创建可交互的图表
     """
     
-    def __init__(self, output_dir: str = "./results/figures"):
-        self.output_dir = output_dir
+    def __init__(self, output_dir: str = None):
+        project_root = Path(__file__).resolve().parents[2]
+        default_output = project_root / "results" / "figures"
+        self.output_dir = Path(output_dir) if output_dir else default_output
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         
     def plot_interactive_erp(
         self,
