@@ -1,5 +1,5 @@
 # ==============================
-# 🧠 BCI运动想象康复训练与教学实训平台
+# 🧠 大模型Agent驱动的脑机接口智能平台
 # streamlit run app.py --server.maxUploadSize 1024
 # ==============================
 
@@ -421,15 +421,15 @@ except:
 # ==============================
 
 st.set_page_config(
-    page_title="BCI康复训练平台",
+    page_title="Agent驱动的BCI智能平台",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.title("🧠 运动想象BCI康复训练与教学实训平台")
+st.title("🧠 大模型Agent驱动的BCI智能平台")
 
 # ==============================
-# Sidebar（核心控制台）- 包含文件上传和GDF转换
+# Sidebar- 包含文件上传和GDF转换
 # ==============================
 
 st.sidebar.title("🎛️ 控制面板")
@@ -1071,7 +1071,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🏠 教学流程",
     "📊 数据与特征",
     "🤖 算法验证",
-    "🎮 康复训练",
+    "🎮 模拟识别",
     "📄 报告与图表"
 ])
 
@@ -1083,7 +1083,7 @@ with tab1:
     st.header("📚 BCI教学流程")
 
     # ======================
-    # Step选择（核心改造1）
+    # Step选择
     # ======================
     step = st.radio("👉 请选择学习步骤 ", [
         "1️⃣ EEG采集",
@@ -1132,7 +1132,7 @@ with tab1:
 
         st.write("👉 EEG很脏，需要去噪！")
 
-        # 使用你原来的参数（教学化解释）
+        # 使用
         st.write(f"当前滤波范围：{low} - {high} Hz")
 
         # 模拟信号
@@ -1481,7 +1481,7 @@ with tab3:
 # ==============================
 
 with tab4:
-    st.header("🎮 BCI康复训练系统")
+    st.header("🎮 BCI模拟识别")
     st.markdown("👉 想象运动 → 模型识别 → 控制反馈")
 
     if "ball" not in st.session_state:
